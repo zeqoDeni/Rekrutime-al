@@ -1,0 +1,268 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Core auth helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Checks users/{uid}.type == 'admin'.
+    // NOTE: the data model stores the role in the 'type' field (not 'role').
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.type == 'admin';
+    }
+
+    function userType() {
+      return signedIn()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.type
+        : null;
+    }
+
+    function isCandidate() {
+      return userType() == 'candidate';
+    }
+
+    function isEmployer() {
+      return userType() == 'employer';
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Marketplace helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    function isOwnUserProfile(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // Used for self-service profile creates/updates (candidate or employer only).
+    function validUserProfile() {
+      return request.resource.data.keys().hasOnly(['name', 'type', 'createdAt'])
+        && request.resource.data.name is string
+        && request.resource.data.type in ['candidate', 'employer']
+        && request.resource.data.createdAt is string;
+    }
+
+    // Used for admin writes to a user document: can set type (including admin)
+    // and isDisabled, but createdAt must never change.
+    function validAdminUserUpdate() {
+      return request.resource.data.type in ['candidate', 'employer', 'admin']
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    function jobEmployerId(jobId) {
+      return get(/databases/$(database)/documents/marketplaceJobs/$(jobId)).data.employerId;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Platform (B2B org) helpers — unchanged
+    // ─────────────────────────────────────────────────────────────────────────
+
+    function memberDoc(orgId) {
+      return /databases/$(database)/documents/orgs/$(orgId)/members/$(request.auth.uid);
+    }
+
+    function isMember(orgId) {
+      return signedIn() && exists(memberDoc(orgId));
+    }
+
+    function role(orgId) {
+      return isMember(orgId) ? get(memberDoc(orgId)).data.role : null;
+    }
+
+    function canManageOrg(orgId) {
+      return role(orgId) in ['owner', 'admin'];
+    }
+
+    function canWriteRecords(orgId) {
+      return role(orgId) in ['owner', 'admin', 'recruiter'];
+    }
+
+    function isCreatingOwnOrg(orgId) {
+      return signedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.keys().hasOnly(['name', 'createdBy', 'createdAt', 'updatedAt']);
+    }
+
+    function isAllowedRecordCollection(collectionName) {
+      return collectionName in ['clients', 'jobs', 'candidates', 'notes', 'tasks', 'activities', 'resumes'];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // users/{uid}
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /users/{uid} {
+      // Admin can read any user document; users can only read their own.
+      allow read: if isOwnUserProfile(uid) || isAdmin();
+
+      // Account creation only through the normal signup flow (self-service).
+      // Admin account bootstrapping must go through Firebase console / Admin SDK.
+      allow create: if isOwnUserProfile(uid) && validUserProfile();
+
+      // Self-service name update (candidate/employer) or admin role/disable update.
+      allow update: if (isOwnUserProfile(uid)
+                        && validUserProfile()
+                        && request.resource.data.createdAt == resource.data.createdAt)
+                    || (isAdmin() && validAdminUserUpdate());
+
+      // User documents are never hard-deleted (disable via isDisabled flag instead).
+      allow delete: if false;
+
+      // ── users/{uid}/savedJobs ─────────────────────────────────────────────
+      match /savedJobs/{jobId} {
+        allow read: if isAdmin() || (isOwnUserProfile(uid) && isCandidate());
+        allow create, delete: if isOwnUserProfile(uid) && isCandidate();
+        allow update: if false;
+      }
+
+      // ── users/{uid}/savedSearches ─────────────────────────────────────────
+      match /savedSearches/{searchId} {
+        allow read: if isAdmin() || (isOwnUserProfile(uid) && isCandidate());
+        allow create, update, delete: if isOwnUserProfile(uid) && isCandidate();
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // marketplaceJobs
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /marketplaceJobs/{jobId} {
+      // Public listing (read already covers everyone; isAdmin() listed for clarity).
+      allow read: if true;
+
+      // Only the owning employer can create their own job listings.
+      allow create: if signedIn()
+        && isEmployer()
+        && request.resource.data.employerId == request.auth.uid;
+
+      // Admin can update any job (status, isDeleted, moderation fields) but must
+      // not reassign ownership or backdate creation.
+      // Employers can update only their own jobs with the same immutability constraints.
+      allow update: if (isAdmin()
+                        && request.resource.data.employerId == resource.data.employerId
+                        && request.resource.data.createdAt == resource.data.createdAt)
+                    || (signedIn()
+                        && isEmployer()
+                        && resource.data.employerId == request.auth.uid
+                        && request.resource.data.employerId == resource.data.employerId
+                        && request.resource.data.createdAt == resource.data.createdAt);
+
+      // Admin can hard-delete if necessary; employers can soft-delete via update (isDeleted).
+      allow delete: if isAdmin()
+                    || (signedIn()
+                        && isEmployer()
+                        && resource.data.employerId == request.auth.uid);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // marketplaceApplications
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /marketplaceApplications/{applicationId} {
+      // Admin sees all; parties to the application see their own.
+      allow read: if isAdmin()
+                  || (signedIn()
+                      && (resource.data.candidateId == request.auth.uid
+                          || resource.data.employerId == request.auth.uid));
+
+      // Only a candidate can create an application for themselves.
+      // employerId must match the job's actual employerId — prevents spoofing
+      // and implicitly verifies the job exists (get() on missing doc fails the rule).
+      allow create: if signedIn()
+        && isCandidate()
+        && request.resource.data.candidateId == request.auth.uid
+        && jobEmployerId(request.resource.data.jobId) == request.resource.data.employerId;
+
+      // Admin can update application status/fields but must not reassign the core
+      // identifiers (candidateId, employerId, jobId).
+      // Employers can update status on their own applications with the same guard.
+      allow update: if (isAdmin()
+                        && request.resource.data.employerId == resource.data.employerId
+                        && request.resource.data.candidateId == resource.data.candidateId
+                        && request.resource.data.jobId == resource.data.jobId)
+                    || (signedIn()
+                        && isEmployer()
+                        && resource.data.employerId == request.auth.uid
+                        && request.resource.data.employerId == resource.data.employerId
+                        && request.resource.data.candidateId == resource.data.candidateId
+                        && request.resource.data.jobId == resource.data.jobId);
+
+      // Applications are never deleted (maintain audit trail).
+      allow delete: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // activityLog  (admin reads; any signed-in user can append)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /activityLog/{entryId} {
+      allow read: if isAdmin();
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Platform collections (B2B — tenant-isolated, admin panel does not touch these)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /userOrgs/{uid}/{orgId} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.role == 'owner'
+        && get(/databases/$(database)/documents/orgs/$(orgId)).data.createdBy == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /invites/{inviteId} {
+      allow read: if signedIn()
+        && (resource.data.email == request.auth.token.email
+            || canManageOrg(resource.data.orgId));
+      allow create, update, delete: if false;
+    }
+
+    match /orgs/{orgId} {
+      allow read: if isMember(orgId);
+      allow create: if isCreatingOwnOrg(orgId);
+      allow update: if canManageOrg(orgId)
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if canManageOrg(orgId);
+
+      match /members/{uid} {
+        allow read: if isMember(orgId);
+        allow create: if signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.role == 'owner'
+          && get(/databases/$(database)/documents/orgs/$(orgId)).data.createdBy == request.auth.uid;
+        allow update, delete: if false;
+      }
+
+      match /auditLog/{auditId} {
+        allow read: if canManageOrg(orgId);
+        allow create, update, delete: if false;
+      }
+
+      match /{collectionName}/{docId} {
+        allow read: if isMember(orgId) && isAllowedRecordCollection(collectionName);
+        allow create, update, delete: if canWriteRecords(orgId) && isAllowedRecordCollection(collectionName);
+
+        match /{subCollection}/{subDocId} {
+          allow read: if isMember(orgId)
+            && collectionName == 'jobs'
+            && subCollection == 'applicants';
+          allow create, update, delete: if canWriteRecords(orgId)
+            && collectionName == 'jobs'
+            && subCollection == 'applicants';
+        }
+      }
+    }
+  }
+}
