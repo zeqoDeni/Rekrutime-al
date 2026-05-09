@@ -9,10 +9,10 @@ import {
 } from 'lucide-react';
 
 export const navItems = [
-  { label: 'Punë', href: '/#jobs' },
-  { label: 'Kandidatë', href: '/#candidates' },
+  { label: 'Punë', href: '/jobs' },
+  { label: 'Kandidatë', href: '/candidates' },
   { label: 'Si funksionon', href: '/#si-funksionon' },
-  { label: 'Kompani', href: '/#kompani' },
+  { label: 'Besueshmëria', href: '/#besim' },
 ];
 
 export const categories = [

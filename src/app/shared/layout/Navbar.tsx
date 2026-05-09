@@ -36,15 +36,25 @@ export function Navbar() {
         </Link>
 
         <div className="hidden items-center gap-7 md:flex">
-          {navItems.map((item) => (
-            <Link
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              to={item.href}
-              key={item.href}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {navItems.map((item) =>
+            item.href.startsWith('/#') ? (
+              <a
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                href={item.href}
+                key={item.href}
+              >
+                {item.label}
+              </a>
+            ) : (
+              <Link
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                to={item.href}
+                key={item.href}
+              >
+                {item.label}
+              </Link>
+            )
+          )}
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
@@ -101,16 +111,27 @@ export function Navbar() {
       {isMenuOpen ? (
         <div className="border-t bg-background px-4 py-4 md:hidden">
           <div className="mx-auto flex max-w-7xl flex-col gap-2">
-            {navItems.map((item) => (
-              <Link
-                className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                to={item.href}
-                key={item.href}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {item.label}
-              </Link>
-            ))}
+            {navItems.map((item) =>
+              item.href.startsWith('/#') ? (
+                <a
+                  className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  href={item.href}
+                  key={item.href}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {item.label}
+                </a>
+              ) : (
+                <Link
+                  className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  to={item.href}
+                  key={item.href}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              )
+            )}
             {isLoading ? null : user ? (
               <>
                 <Button asChild variant="ghost" className="mt-2">

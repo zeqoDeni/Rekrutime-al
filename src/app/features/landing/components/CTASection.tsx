@@ -1,32 +1,29 @@
-import { ArrowRight, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/app/shared/ui/button';
 
 export function CTASection() {
   return (
-    <section className="bg-foreground px-4 py-16 text-background sm:px-6 sm:py-20 lg:px-8">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-        <div className="max-w-2xl">
-          <h2 className="text-3xl font-semibold sm:text-4xl">Gjej çfarë vjen më pas në karrierë ose në hiring.</h2>
-          <p className="mt-3 text-base leading-7 text-background/70">
-            Shfleto role aktive dhe profile të verifikuara me të dhëna të plota, pa hapa të panevojshëm.
-          </p>
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Button asChild className="h-12 rounded-md bg-primary px-6 text-primary-foreground hover:bg-primary/90">
-            <a href="#jobs">
-              <Search data-icon="inline-start" />
-              Shfleto punët
-            </a>
+    <section className="bg-foreground px-4 py-20 text-background sm:px-6 sm:py-24 lg:px-8">
+      <div className="mx-auto max-w-2xl text-center">
+        <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          Gati për hapin tjetër?
+        </h2>
+        <p className="mt-4 text-base leading-7 text-background/60">
+          Shfleto role aktive ose krijo llogarinë tënde falas — pa karta krediti.
+        </p>
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Button
+            asChild
+            className="h-12 rounded-lg bg-primary px-8 text-base text-white hover:bg-primary/90"
+          >
+            <Link to="/jobs">Shiko rolet</Link>
           </Button>
           <Button
             asChild
-            className="h-12 rounded-md border-background/20 bg-background px-6 text-foreground hover:bg-background/90"
-            variant="outline"
+            className="h-12 rounded-lg border border-background/20 bg-transparent px-8 text-base text-background hover:bg-background/10"
+            variant="ghost"
           >
-            <a href="#candidates">
-              Gjej kandidatë
-              <ArrowRight data-icon="inline-end" />
-            </a>
+            <Link to="/signup">Regjistrohu falas</Link>
           </Button>
         </div>
       </div>

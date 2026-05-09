@@ -1,6 +1,4 @@
 import { CTASection } from '../components/CTASection';
-import { FeaturedCandidates } from '../components/FeaturedCandidates';
-import { FeaturedJobs } from '../components/FeaturedJobs';
 import { Footer } from '@/app/shared/layout/Footer';
 import { HeroSection } from '../components/HeroSection';
 import { HowItWorks } from '../components/HowItWorks';
@@ -13,9 +11,7 @@ export default function Home() {
       <Navbar />
       <main>
         <HeroSection />
-        <FeaturedJobs />
         <HowItWorks />
-        <FeaturedCandidates />
         <TrustSection />
         <CTASection />
       </main>
