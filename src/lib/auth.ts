@@ -88,7 +88,14 @@ export async function loginWithGoogle(): Promise<void> {
 }
 
 export async function getGoogleRedirectResult(): Promise<User | null> {
-  const result = await getRedirectResult(auth);
+  let result;
+  try {
+    result = await getRedirectResult(auth);
+  } catch (error) {
+    // Browser blocked cross-origin storage — observeAuthState will handle the user
+    console.warn("getRedirectResult failed (likely browser privacy setting):", error);
+    return null;
+  }
   if (!result) return null;
   let profile = await getUserProfile(result.user.uid);
   if (!profile) {
@@ -120,8 +127,23 @@ export function observeAuthState(
       try {
         const profile = await getUserProfile(firebaseUser.uid);
         if (!profile) {
-          // Profile not yet created — signup() or getGoogleRedirectResult()
-          // will create it and call setUser() explicitly. Don't race them.
+          const isGoogle = firebaseUser.providerData.some(
+            (p) => p.providerId === "google.com"
+          );
+          if (isGoogle) {
+            // No profile but Google sign-in is active: either getRedirectResult()
+            // was blocked by the browser, or we're in a concurrent write race.
+            // Create the profile here so the app doesn't hang.
+            const newProfile = await createUserProfile(
+              firebaseUser,
+              firebaseUser.displayName ||
+                firebaseUser.email?.split("@")[0] ||
+                "Përdorues",
+              "candidate"
+            );
+            onUser(mapFirebaseUser(firebaseUser, newProfile));
+          }
+          // Email/password: signup() owns profile creation — don't race it.
           return;
         }
         onUser(mapFirebaseUser(firebaseUser, profile));

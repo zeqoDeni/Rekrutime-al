@@ -51,9 +51,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getGoogleRedirectResult().then((redirectUser) => {
       if (redirectUser) {
         setUser(redirectUser);
+        setIsLoading(false);
         toast.success(`Mirë se u kthyet, ${redirectUser.name}!`);
+        // Only navigate if we haven't already (observeAuthState may have done it)
+        if (!window.location.pathname.startsWith("/app/")) {
+          window.location.replace("/app/select-org");
+        }
       }
-    }).catch(console.error);
+    }).catch((err) => {
+      console.error("Google redirect result error:", err);
+      // Don't touch isLoading — observeAuthState handles it from onAuthStateChanged
+    });
 
     const unsubscribe = observeAuthState(
       (firebaseUser) => {
