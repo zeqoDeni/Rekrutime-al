@@ -48,7 +48,7 @@ export default function Signup() {
     }
     const result = await signup(email, password, name, userType);
     if (result.success) {
-      navigate('/app/select-org');
+      window.location.replace('/app/select-org');
     } else {
       setError(result.error || 'Gabim gjatë regjistrimit. Provoni përsëri.');
     }

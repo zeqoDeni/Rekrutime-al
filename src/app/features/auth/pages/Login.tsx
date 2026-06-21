@@ -35,7 +35,7 @@ export default function Login() {
     setError('');
     const success = await login(email, password);
     if (success) {
-      navigate('/app/select-org');
+      window.location.replace('/app/select-org');
     } else {
       setError('Email ose fjalëkalim i gabuar.');
     }
