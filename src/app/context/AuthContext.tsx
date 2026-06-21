@@ -10,7 +10,6 @@ import { User } from "@/lib/types/api";
 import {
   login as firebaseLogin,
   loginWithGoogle as firebaseLoginWithGoogle,
-  getGoogleRedirectResult,
   logout as firebaseLogout,
   observeAuthState,
   signup as firebaseSignup,
@@ -47,22 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authError, setAuthError] = useState("");
 
   useEffect(() => {
-    // Handle Google redirect result (fires after signInWithRedirect returns)
-    getGoogleRedirectResult().then((redirectUser) => {
-      if (redirectUser) {
-        setUser(redirectUser);
-        setIsLoading(false);
-        toast.success(`Mirë se u kthyet, ${redirectUser.name}!`);
-        // Only navigate if we haven't already (observeAuthState may have done it)
-        if (!window.location.pathname.startsWith("/app/")) {
-          window.location.replace("/app/select-org");
-        }
-      }
-    }).catch((err) => {
-      console.error("Google redirect result error:", err);
-      // Don't touch isLoading — observeAuthState handles it from onAuthStateChanged
-    });
-
     const unsubscribe = observeAuthState(
       (firebaseUser) => {
         setUser(firebaseUser);
@@ -82,10 +65,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithGoogle = useCallback(async (): Promise<boolean> => {
     setAuthError("");
     try {
-      await firebaseLoginWithGoogle(); // triggers redirect — page navigates away
+      const googleUser = await firebaseLoginWithGoogle();
+      setUser(googleUser);
+      toast.success(`Mirë se u kthyet, ${googleUser.name}!`);
+      window.location.replace("/app/select-org");
       return true;
     } catch (error: unknown) {
-      const message = getErrorMessage(error, "Gabim me Google login");
+      // Show Firebase error code so we can diagnose the exact problem
+      const code = (error as { code?: string }).code ?? "unknown";
+      const message = `Hyrja me Google dështoi (${code})`;
       setAuthError(message);
       toast.error(message);
       return false;

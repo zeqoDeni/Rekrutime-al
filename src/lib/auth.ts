@@ -2,10 +2,9 @@ import {
   User as FirebaseUser,
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
-  getRedirectResult,
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  signInWithRedirect,
+  signInWithPopup,
   signOut,
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -82,21 +81,9 @@ export async function login(email: string, password: string): Promise<User> {
   return mapFirebaseUser(credential.user, profile);
 }
 
-export async function loginWithGoogle(): Promise<void> {
+export async function loginWithGoogle(): Promise<User> {
   const provider = new GoogleAuthProvider();
-  await signInWithRedirect(auth, provider);
-}
-
-export async function getGoogleRedirectResult(): Promise<User | null> {
-  let result;
-  try {
-    result = await getRedirectResult(auth);
-  } catch (error) {
-    // Browser blocked cross-origin storage — observeAuthState will handle the user
-    console.warn("getRedirectResult failed (likely browser privacy setting):", error);
-    return null;
-  }
-  if (!result) return null;
+  const result = await signInWithPopup(auth, provider);
   let profile = await getUserProfile(result.user.uid);
   if (!profile) {
     profile = await createUserProfile(

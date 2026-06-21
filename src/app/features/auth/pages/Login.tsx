@@ -44,12 +44,10 @@ export default function Login() {
   const handleGoogle = async () => {
     setError('');
     setGoogleLoading(true);
-    try {
-      await loginWithGoogle(); // page navigates away to Google — no result here
-    } catch {
-      setGoogleLoading(false);
-      setError('Hyrja me Google dështoi. Provoni përsëri.');
-    }
+    const ok = await loginWithGoogle();
+    // On success: loginWithGoogle() calls window.location.replace — page navigates away.
+    // On failure: toast with the Firebase error code is already shown by AuthContext.
+    if (!ok) setGoogleLoading(false);
   };
 
   return (
