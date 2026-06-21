@@ -10,6 +10,7 @@ import { User } from "@/lib/types/api";
 import {
   login as firebaseLogin,
   loginWithGoogle as firebaseLoginWithGoogle,
+  getGoogleRedirectResult,
   logout as firebaseLogout,
   observeAuthState,
   signup as firebaseSignup,
@@ -46,6 +47,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authError, setAuthError] = useState("");
 
   useEffect(() => {
+    // Handle Google redirect result (fires after signInWithRedirect returns)
+    getGoogleRedirectResult().then((redirectUser) => {
+      if (redirectUser) {
+        setUser(redirectUser);
+        toast.success(`Mirë se u kthyet, ${redirectUser.name}!`);
+      }
+    }).catch(console.error);
+
     const unsubscribe = observeAuthState(
       (firebaseUser) => {
         setUser(firebaseUser);
@@ -64,20 +73,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loginWithGoogle = useCallback(async (): Promise<boolean> => {
-    setIsLoading(true);
     setAuthError("");
     try {
-      const loggedInUser = await firebaseLoginWithGoogle();
-      setUser(loggedInUser);
-      toast.success(`Mirë se u kthyet, ${loggedInUser.name}!`);
+      await firebaseLoginWithGoogle(); // triggers redirect — page navigates away
       return true;
     } catch (error: unknown) {
       const message = getErrorMessage(error, "Gabim me Google login");
       setAuthError(message);
       toast.error(message);
       return false;
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 

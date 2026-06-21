@@ -2,9 +2,10 @@ import {
   User as FirebaseUser,
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
+  getRedirectResult,
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
   signOut,
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -81,9 +82,14 @@ export async function login(email: string, password: string): Promise<User> {
   return mapFirebaseUser(credential.user, profile);
 }
 
-export async function loginWithGoogle(): Promise<User> {
+export async function loginWithGoogle(): Promise<void> {
   const provider = new GoogleAuthProvider();
-  const result = await signInWithPopup(auth, provider);
+  await signInWithRedirect(auth, provider);
+}
+
+export async function getGoogleRedirectResult(): Promise<User | null> {
+  const result = await getRedirectResult(auth);
+  if (!result) return null;
   let profile = await getUserProfile(result.user.uid);
   if (!profile) {
     profile = await createUserProfile(
