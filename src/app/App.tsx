@@ -39,6 +39,7 @@ import CandidateDetailPage from '@/app/platform/pages/CandidateDetailPage';
 import SearchPage from '@/app/platform/pages/SearchPage';
 import TeamSettingsPage from '@/app/platform/pages/TeamSettingsPage';
 import BillingSettingsPage from '@/app/platform/pages/BillingSettingsPage';
+import TasksPage from '@/app/platform/pages/TasksPage';
 
 function HashScroll() {
   const { hash } = useLocation();
@@ -142,6 +143,7 @@ export default function App() {
           <Route path="candidates" element={<CandidatesPage />} />
           <Route path="candidates/new" element={<CandidateNewPage />} />
           <Route path="candidates/:candidateId" element={<CandidateDetailPage />} />
+          <Route path="tasks" element={<TasksPage />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="settings/team" element={<TeamSettingsPage />} />
           <Route path="settings/billing" element={<BillingSettingsPage />} />

@@ -2,12 +2,13 @@ import { Link, Outlet, useParams } from "react-router-dom";
 
 const navItems = [
   ["Dashboard", "dashboard"],
-  ["Clients", "clients"],
-  ["Jobs", "jobs"],
-  ["Candidates", "candidates"],
-  ["Search", "search"],
-  ["Team", "settings/team"],
-  ["Billing", "settings/billing"],
+  ["Klientët", "clients"],
+  ["Punët", "jobs"],
+  ["Kandidatët", "candidates"],
+  ["Detyrat", "tasks"],
+  ["Kërkim", "search"],
+  ["Ekipi", "settings/team"],
+  ["Abonimi", "settings/billing"],
 ] as const;
 
 export default function AppLayout() {

@@ -32,10 +32,10 @@ export default function TeamSettingsPage() {
     setMessage("");
     try {
       await createInvite(orgId, email, role);
-      setMessage("Invite sent.");
+      setMessage("Ftesa u dërgua.");
       setEmail("");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Invite failed.");
+      setMessage(error instanceof Error ? error.message : "Ftesa dështoi.");
     } finally {
       setIsBusy(false);
     }
@@ -47,18 +47,18 @@ export default function TeamSettingsPage() {
     setMessage("");
     try {
       if (!canAssignRole(currentRole, nextRole)) {
-        setMessage("You do not have permission to assign that role.");
+        setMessage("Nuk keni leje për këtë rol.");
         return;
       }
       if (wouldRemoveLastOwner(members, targetUid, nextRole)) {
-        setMessage("An organization must keep at least one owner.");
+        setMessage("Organizata duhet të ketë të paktën një pronar.");
         return;
       }
       await changeMemberRole(orgId, targetUid, nextRole);
       await refreshMembers();
-      setMessage("Role updated.");
+      setMessage("Roli u ndryshua.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Role update failed.");
+      setMessage(error instanceof Error ? error.message : "Ndryshimi i rolit dështoi.");
     } finally {
       setIsBusy(false);
     }
@@ -67,9 +67,9 @@ export default function TeamSettingsPage() {
   return (
     <RbacGuard allow={["owner", "admin"]}>
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold">Team Settings</h1>
+        <h1 className="text-2xl font-semibold">Cilësimet e Ekipit</h1>
         <form className="flex flex-wrap gap-2" onSubmit={sendInvite}>
-          <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="teammate@agency.com" />
+          <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="koleg@agjencia.com" />
           <select
             value={role}
             onChange={(e) => setRole(e.target.value as AppRole)}
@@ -79,7 +79,7 @@ export default function TeamSettingsPage() {
             <option value="recruiter">Recruiter</option>
             <option value="viewer">Viewer</option>
           </select>
-          <Button type="submit" disabled={isBusy}>Invite</Button>
+          <Button type="submit" disabled={isBusy}>Fto</Button>
         </form>
         {message && <p className="text-sm text-muted-foreground">{message}</p>}
         <div className="space-y-2">

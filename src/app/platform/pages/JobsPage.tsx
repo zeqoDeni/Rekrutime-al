@@ -1,11 +1,29 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Briefcase } from "lucide-react";
+import { Briefcase, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/app/shared/ui/button";
 import { Input } from "@/app/shared/ui/input";
 import { Badge } from "@/app/shared/ui/badge";
 import { Skeleton } from "@/app/shared/ui/skeleton";
-import { createJob, listJobs } from "@/lib/orgs/jobs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/shared/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/app/shared/ui/alert-dialog";
+import { createJob, deleteJob, listJobs, updateJob } from "@/lib/orgs/jobs";
 import { listCandidates } from "@/lib/orgs/candidates";
 import { listApplicants, upsertApplicantStage } from "@/lib/orgs/applicants";
 import { useOrg } from "../context/OrgContext";
@@ -37,7 +55,7 @@ export default function JobsPage() {
   const [applicants, setApplicants] = useState<Applicant[]>([]);
 
   const [title, setTitle] = useState("");
-  const [candidateId, setCandidateId] = useState("");
+  const [selectedCandidateId, setSelectedCandidateId] = useState("");
 
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [loadingApplicants, setLoadingApplicants] = useState(false);
@@ -84,6 +102,12 @@ export default function JobsPage() {
     [candidates]
   );
 
+  // Candidates not yet in this job's pipeline
+  const availableCandidates = useMemo(() => {
+    const inPipeline = new Set(applicants.map((a) => a.candidateId));
+    return candidates.filter((c) => !inPipeline.has(c.id));
+  }, [candidates, applicants]);
+
   const createJobSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!orgId || !title.trim() || !user) return;
@@ -108,25 +132,52 @@ export default function JobsPage() {
 
   const addApplicant = async (e: FormEvent) => {
     e.preventDefault();
-    if (!orgId || !activeJobId || !candidateId.trim() || !user) return;
+    if (!orgId || !activeJobId || !selectedCandidateId || !user) return;
     setAddingApplicant(true);
     try {
       await upsertApplicantStage({
         orgId,
         jobId: activeJobId,
-        applicantId: candidateId.trim(),
-        candidateId: candidateId.trim(),
+        applicantId: selectedCandidateId,
+        candidateId: selectedCandidateId,
         stage: "sourced",
         changedBy: user.id,
       });
       toast.success("Kandidati u shtua në pipeline.");
-      setCandidateId("");
+      setSelectedCandidateId("");
       const data = await listApplicants(orgId, activeJobId);
       setApplicants(data);
     } catch {
       toast.error("Kandidati nuk u shtua.");
     } finally {
       setAddingApplicant(false);
+    }
+  };
+
+  const handleStatusChange = async (jobId: string, status: JobStatus) => {
+    if (!orgId) return;
+    setJobs((prev) => prev.map((j) => j.id === jobId ? { ...j, status } : j));
+    try {
+      await updateJob(orgId, jobId, { status });
+      toast.success("Statusi u ndryshua.");
+    } catch {
+      toast.error("Statusi nuk u ndryshua.");
+      reloadJobs();
+    }
+  };
+
+  const handleDeleteJob = async (jobId: string) => {
+    if (!orgId) return;
+    try {
+      await deleteJob(orgId, jobId);
+      toast.success("Puna u fshi.");
+      if (activeJobId === jobId) {
+        const remaining = jobs.filter((j) => j.id !== jobId);
+        setActiveJobId(remaining[0]?.id ?? "");
+      }
+      setJobs((prev) => prev.filter((j) => j.id !== jobId));
+    } catch {
+      toast.error("Fshirja dështoi.");
     }
   };
 
@@ -190,9 +241,7 @@ export default function JobsPage() {
         <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-12 text-center">
           <Briefcase className="size-10 text-muted-foreground opacity-30" />
           <div>
-            <p className="text-sm font-medium text-muted-foreground">
-              Nuk ka punë ende
-            </p>
+            <p className="text-sm font-medium text-muted-foreground">Nuk ka punë ende</p>
             <p className="text-xs text-muted-foreground mt-0.5">
               Krijoni punën e parë duke përdorur formularin më sipër.
             </p>
@@ -201,24 +250,72 @@ export default function JobsPage() {
       ) : (
         <div className="flex flex-wrap gap-2">
           {jobs.map((job) => (
-            <button
+            <div
               key={job.id}
-              onClick={() => setActiveJobId(job.id)}
               className={[
-                "inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm transition-colors",
+                "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-sm transition-colors",
                 activeJobId === job.id
                   ? "border-primary bg-primary text-primary-foreground"
                   : "hover:border-primary/50 hover:bg-muted",
               ].join(" ")}
             >
-              {job.title}
-              <Badge
-                variant={STATUS_VARIANTS[job.status]}
-                className="text-[10px] py-0 px-1.5 h-4"
+              <button
+                onClick={() => setActiveJobId(job.id)}
+                className="flex items-center gap-1.5"
               >
-                {STATUS_LABELS[job.status]}
-              </Badge>
-            </button>
+                {job.title}
+                <Badge
+                  variant={activeJobId === job.id ? "outline" : STATUS_VARIANTS[job.status]}
+                  className="text-[10px] py-0 px-1.5 h-4"
+                >
+                  {STATUS_LABELS[job.status]}
+                </Badge>
+              </button>
+
+              {/* Status change */}
+              <Select
+                value={job.status}
+                onValueChange={(v) => handleStatusChange(job.id, v as JobStatus)}
+              >
+                <SelectTrigger className="h-5 w-5 border-none shadow-none bg-transparent p-0 focus:ring-0 opacity-60 hover:opacity-100 [&>svg]:size-3 [&>svg]:shrink-0">
+                  <span className="sr-only">Ndrysho statusin</span>
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(STATUS_LABELS) as JobStatus[]).map((s) => (
+                    <SelectItem key={s} value={s} className="text-xs">
+                      {STATUS_LABELS[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Delete */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button className="opacity-40 hover:opacity-100 hover:text-destructive transition-opacity ml-0.5">
+                    <Trash2 className="size-3" />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Fshi punën</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      A jeni të sigurt që doni të fshini{" "}
+                      <strong>{job.title}</strong>? Ky veprim nuk kthehet mbrapa.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Anulo</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => handleDeleteJob(job.id)}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Fshi
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           ))}
         </div>
       )}
@@ -231,21 +328,39 @@ export default function JobsPage() {
               Pipeline — {activeJob.title}
             </h2>
 
-            {/* Add candidate by ID */}
+            {/* Add candidate dropdown */}
             <form onSubmit={addApplicant} className="flex gap-2">
-              <Input
-                value={candidateId}
-                onChange={(e) => setCandidateId(e.target.value)}
-                placeholder="ID e kandidatit..."
-                className="h-8 w-52 font-mono text-xs"
+              <Select
+                value={selectedCandidateId}
+                onValueChange={setSelectedCandidateId}
                 disabled={addingApplicant}
-              />
+              >
+                <SelectTrigger className="h-8 w-52 text-xs">
+                  <SelectValue placeholder="Zgjidh kandidatin..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableCandidates.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-muted-foreground">
+                      Të gjithë kandidatët janë në pipeline.
+                    </div>
+                  ) : (
+                    availableCandidates.map((c) => (
+                      <SelectItem key={c.id} value={c.id} className="text-xs">
+                        <span className="font-medium">{c.fullName}</span>
+                        {c.email && (
+                          <span className="text-muted-foreground ml-1">· {c.email}</span>
+                        )}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
               <Button
                 type="submit"
                 variant="outline"
                 size="sm"
                 className="h-8"
-                disabled={!candidateId.trim() || addingApplicant}
+                disabled={!selectedCandidateId || addingApplicant}
               >
                 {addingApplicant ? "Duke shtuar..." : "Shto"}
               </Button>

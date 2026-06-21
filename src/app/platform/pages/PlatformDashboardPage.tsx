@@ -116,7 +116,7 @@ export default function PlatformDashboardPage() {
           value={pendingTasks}
           sub={tasks.length > 0 ? `${tasks.length} gjithsej` : undefined}
           icon={ListTodo}
-          href={`/app/${orgId}/jobs`}
+          href={`/app/${orgId}/tasks`}
           loading={loading}
         />
         <StatCard

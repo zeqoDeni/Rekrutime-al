@@ -44,7 +44,7 @@ export default function Signup() {
     }
     const result = await signup(email, password, name, userType);
     if (result.success) {
-      navigate(getDashboardRoute({ type: userType }));
+      navigate('/app/select-org');
     } else {
       setError(result.error || 'Gabim gjatë regjistrimit. Provoni përsëri.');
     }
@@ -56,7 +56,7 @@ export default function Signup() {
     const success = await loginWithGoogle();
     setGoogleLoading(false);
     if (success) {
-      navigate('/dashboard');
+      navigate('/app/select-org');
     } else {
       setError('Regjistrimi me Google dështoi. Provoni përsëri.');
     }

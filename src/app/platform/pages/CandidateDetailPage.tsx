@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Briefcase, FileText, Mail, Phone, Trash2 } from "lucide-react";
+import { ArrowLeft, Briefcase, Check, FileText, Mail, Pencil, Phone, Trash2, X } from "lucide-react";
 import { Button } from "@/app/shared/ui/button";
 import { Label } from "@/app/shared/ui/label";
 import { Textarea } from "@/app/shared/ui/textarea";
@@ -104,6 +104,13 @@ export default function CandidateDetailPage() {
   const [savingNote, setSavingNote] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Inline edit
+  const [editing, setEditing] = useState(false);
+  const [editFullName, setEditFullName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
   const reload = useCallback(async () => {
     if (!orgId || !candidateId) return;
     const [cand, noteList, memberList, jobList] = await Promise.all([
@@ -194,6 +201,35 @@ export default function CandidateDetailPage() {
     }
   }
 
+  function startEdit() {
+    if (!candidate) return;
+    setEditFullName(candidate.fullName);
+    setEditEmail(candidate.email ?? "");
+    setEditPhone(candidate.phone ?? "");
+    setEditing(true);
+  }
+
+  async function handleEditSave() {
+    if (!orgId || !candidateId || !editFullName.trim()) return;
+    setSavingEdit(true);
+    try {
+      await updateCandidate(orgId, candidateId, {
+        fullName: editFullName.trim(),
+        email: editEmail.trim() || undefined,
+        phone: editPhone.trim() || undefined,
+      });
+      setCandidate((c) =>
+        c ? { ...c, fullName: editFullName.trim(), email: editEmail.trim() || undefined, phone: editPhone.trim() || undefined } : c
+      );
+      toast.success("Kandidati u përditësua.");
+      setEditing(false);
+    } catch {
+      toast.error("Ndryshimet nuk u ruajtën.");
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
   async function handleDelete() {
     if (!orgId || !candidateId) return;
     try {
@@ -243,18 +279,73 @@ export default function CandidateDetailPage() {
 
         {/* ── Left: Candidate info ── */}
         <aside className="space-y-4">
-          <div>
-            <h1 className="text-xl font-semibold leading-tight">
-              {candidate.fullName}
-            </h1>
-            <Badge
-              variant={CRM_VARIANTS[candidate.crmStatus ?? "new"]}
-              className="mt-2 text-xs"
-            >
-              {CRM_LABELS[candidate.crmStatus ?? "new"]}
-            </Badge>
-          </div>
+          {editing ? (
+            <div className="space-y-2">
+              <Input
+                value={editFullName}
+                onChange={(e) => setEditFullName(e.target.value)}
+                placeholder="Emri i plotë"
+                className="h-8 text-sm font-medium"
+                disabled={savingEdit}
+                autoFocus
+              />
+              <div className="flex items-center gap-1.5">
+                <Mail className="size-3.5 text-muted-foreground shrink-0" />
+                <Input
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  placeholder="Email"
+                  type="email"
+                  className="h-8 text-sm"
+                  disabled={savingEdit}
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Phone className="size-3.5 text-muted-foreground shrink-0" />
+                <Input
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="Telefon"
+                  className="h-8 text-sm"
+                  disabled={savingEdit}
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Button size="sm" className="h-7 gap-1.5" onClick={handleEditSave} disabled={!editFullName.trim() || savingEdit}>
+                  <Check className="size-3.5" />
+                  {savingEdit ? "Duke ruajtur..." : "Ruaj"}
+                </Button>
+                <Button size="sm" variant="ghost" className="h-7 gap-1.5" onClick={() => setEditing(false)} disabled={savingEdit}>
+                  <X className="size-3.5" />
+                  Anulo
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-start justify-between gap-2">
+                <h1 className="text-xl font-semibold leading-tight">
+                  {candidate.fullName}
+                </h1>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0 shrink-0 text-muted-foreground hover:text-foreground"
+                  onClick={startEdit}
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+              </div>
+              <Badge
+                variant={CRM_VARIANTS[candidate.crmStatus ?? "new"]}
+                className="mt-2 text-xs"
+              >
+                {CRM_LABELS[candidate.crmStatus ?? "new"]}
+              </Badge>
+            </div>
+          )}
 
+          {!editing && (
           <div className="space-y-2 text-sm">
             {candidate.email && (
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -292,6 +383,7 @@ export default function CandidateDetailPage() {
               </div>
             )}
           </div>
+          )}
 
           <Separator />
 

@@ -31,7 +31,7 @@ export default function Login() {
     setError('');
     const success = await login(email, password);
     if (success) {
-      navigate(getDashboardRoute({ type: user?.type ?? 'candidate' }));
+      navigate('/app/select-org');
     } else {
       setError('Email ose fjalëkalim i gabuar.');
     }
@@ -43,7 +43,7 @@ export default function Login() {
     const success = await loginWithGoogle();
     setGoogleLoading(false);
     if (success) {
-      navigate(getDashboardRoute({ type: user?.type ?? 'candidate' }));
+      navigate('/app/select-org');
     } else {
       setError('Hyrja me Google dështoi. Provoni përsëri.');
     }
