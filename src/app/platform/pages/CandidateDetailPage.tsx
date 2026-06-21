@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Briefcase, Check, FileText, Mail, Pencil, Phone, Trash2, X } from "lucide-react";
 import { Button } from "@/app/shared/ui/button";
+import { Input } from "@/app/shared/ui/input";
 import { Label } from "@/app/shared/ui/label";
 import { Textarea } from "@/app/shared/ui/textarea";
 import { Badge } from "@/app/shared/ui/badge";
@@ -39,6 +40,7 @@ import {
   getCandidate,
   reassignCandidate,
   softDeleteCandidate,
+  updateCandidate,
   updateCrmStatus,
 } from "@/lib/orgs/candidates";
 import { createNote, listNotesForRef } from "@/lib/orgs/notes";
