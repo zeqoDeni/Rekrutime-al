@@ -120,15 +120,10 @@ export function observeAuthState(
       try {
         const profile = await getUserProfile(firebaseUser.uid);
         if (!profile) {
-          const fallbackProfile = await createUserProfile(
-            firebaseUser,
-            firebaseUser.email?.split("@")[0] || "Përdorues",
-            "candidate"
-          );
-          onUser(mapFirebaseUser(firebaseUser, fallbackProfile));
+          // Profile not yet created — signup() or getGoogleRedirectResult()
+          // will create it and call setUser() explicitly. Don't race them.
           return;
         }
-
         onUser(mapFirebaseUser(firebaseUser, profile));
       } catch (error) {
         onError?.(error as Error);
