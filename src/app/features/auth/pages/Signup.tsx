@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, Lock, Mail, User } from 'lucide-react';
 import { Button } from '@/app/shared/ui/button';
 import { Input } from '@/app/shared/ui/input';
 import { Label } from '@/app/shared/ui/label';
 import { useAuth } from '@/app/context/AuthContext';
-import { getDashboardRoute } from '@/app/shared/routes/dashboardRoute';
 
 function GoogleIcon() {
   return (
@@ -32,8 +31,13 @@ export default function Signup() {
   const [userType, setUserType] = useState<AccountType>('candidate');
   const [error, setError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
-  const { signup, loginWithGoogle, isLoading } = useAuth();
+  const { signup, loginWithGoogle, isLoading, user } = useAuth();
   const navigate = useNavigate();
+
+  // Navigate after redirect-based Google sign-in resolves
+  useEffect(() => {
+    if (user) navigate('/app/select-org');
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,11 +57,10 @@ export default function Signup() {
   const handleGoogle = async () => {
     setError('');
     setGoogleLoading(true);
-    const success = await loginWithGoogle();
-    setGoogleLoading(false);
-    if (success) {
-      navigate('/app/select-org');
-    } else {
+    try {
+      await loginWithGoogle(); // page navigates away to Google — no result here
+    } catch {
+      setGoogleLoading(false);
       setError('Regjistrimi me Google dështoi. Provoni përsëri.');
     }
   };
