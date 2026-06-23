@@ -211,12 +211,18 @@ service cloud.firestore {
     // Platform collections (B2B — tenant-isolated, admin panel does not touch these)
     // ─────────────────────────────────────────────────────────────────────────
 
-    match /userOrgs/{uid}/{orgId} {
+    match /userOrgs/{uid}/memberships/{orgId} {
       allow read: if signedIn() && request.auth.uid == uid;
       allow create: if signedIn()
         && request.auth.uid == uid
-        && request.resource.data.role == 'owner'
-        && get(/databases/$(database)/documents/orgs/$(orgId)).data.createdBy == request.auth.uid;
+        && (
+          (request.resource.data.role == 'owner'
+            && get(/databases/$(database)/documents/orgs/$(orgId)).data.createdBy == request.auth.uid)
+          || (request.resource.data.role in ['admin', 'recruiter', 'viewer']
+              && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteCode)).data.email == request.auth.token.email
+              && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteCode)).data.orgId == orgId
+              && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteCode)).data.status == 'pending')
+        );
       allow update, delete: if false;
     }
 
@@ -224,7 +230,27 @@ service cloud.firestore {
       allow read: if signedIn()
         && (resource.data.email == request.auth.token.email
             || canManageOrg(resource.data.orgId));
-      allow create, update, delete: if false;
+      allow create: if signedIn()
+        && canManageOrg(request.resource.data.orgId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.role in ['admin', 'recruiter', 'viewer'];
+      allow update: if signedIn()
+        && (
+          (resource.data.email == request.auth.token.email
+            && resource.data.status == 'pending'
+            && request.resource.data.status == 'accepted'
+            && request.resource.data.orgId == resource.data.orgId
+            && request.resource.data.email == resource.data.email
+            && request.resource.data.role == resource.data.role)
+          || (canManageOrg(resource.data.orgId)
+              && resource.data.status == 'pending'
+              && request.resource.data.status == 'revoked'
+              && request.resource.data.orgId == resource.data.orgId
+              && request.resource.data.email == resource.data.email
+              && request.resource.data.role == resource.data.role)
+        );
+      allow delete: if false;
     }
 
     match /orgs/{orgId} {
@@ -240,9 +266,18 @@ service cloud.firestore {
         allow create: if signedIn()
           && request.auth.uid == uid
           && request.resource.data.uid == request.auth.uid
-          && request.resource.data.role == 'owner'
-          && get(/databases/$(database)/documents/orgs/$(orgId)).data.createdBy == request.auth.uid;
-        allow update, delete: if false;
+          && (
+            (request.resource.data.role == 'owner'
+              && get(/databases/$(database)/documents/orgs/$(orgId)).data.createdBy == request.auth.uid)
+            || (request.resource.data.role in ['admin', 'recruiter', 'viewer']
+                && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteCode)).data.email == request.auth.token.email
+                && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteCode)).data.orgId == orgId
+                && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteCode)).data.status == 'pending')
+          );
+        allow update: if (role(orgId) == 'owner'
+            || (role(orgId) == 'admin' && request.resource.data.role != 'owner'))
+          && request.resource.data.uid == resource.data.uid;
+        allow delete: if canManageOrg(orgId);
       }
 
       match /auditLog/{auditId} {
