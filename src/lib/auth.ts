@@ -114,23 +114,9 @@ export function observeAuthState(
       try {
         const profile = await getUserProfile(firebaseUser.uid);
         if (!profile) {
-          const isGoogle = firebaseUser.providerData.some(
-            (p) => p.providerId === "google.com"
-          );
-          if (isGoogle) {
-            // No profile but Google sign-in is active: either getRedirectResult()
-            // was blocked by the browser, or we're in a concurrent write race.
-            // Create the profile here so the app doesn't hang.
-            const newProfile = await createUserProfile(
-              firebaseUser,
-              firebaseUser.displayName ||
-                firebaseUser.email?.split("@")[0] ||
-                "Përdorues",
-              "candidate"
-            );
-            onUser(mapFirebaseUser(firebaseUser, newProfile));
-          }
-          // Email/password: signup() owns profile creation — don't race it.
+          // Profile not yet created — loginWithGoogle() / signup() own this.
+          // Don't write here: a concurrent write would hit the update rule
+          // (not create) and fail because createdAt timestamps differ by ms.
           return;
         }
         onUser(mapFirebaseUser(firebaseUser, profile));
