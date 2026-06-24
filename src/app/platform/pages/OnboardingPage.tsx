@@ -18,7 +18,12 @@ export default function OnboardingPage() {
     if (!user || !name.trim()) return;
     setLoading(true);
     try {
-      const orgId = await createOrganization({ name: name.trim(), userId: user.id });
+      const orgId = await createOrganization({
+        name: name.trim(),
+        userId: user.id,
+        displayName: user.name || undefined,
+        email: user.email || undefined,
+      });
       navigate(`/app/${orgId}/dashboard`);
     } finally {
       setLoading(false);

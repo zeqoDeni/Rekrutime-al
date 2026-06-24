@@ -37,6 +37,18 @@ export async function acceptInvite(inviteCode: string): Promise<void> {
   if (invite.status !== "pending") throw new Error("Kjo ftesë nuk është aktive ose tashmë është pranuar.");
   if (invite.email !== user.email?.toLowerCase()) throw new Error("Kjo ftesë nuk është për llogarinë tuaj.");
 
+  // Fetch display name from user profile (more reliable than Firebase Auth displayName)
+  let displayName: string | undefined = user.displayName || undefined;
+  let userEmail: string | undefined = user.email || undefined;
+  try {
+    const profileSnap = await getDoc(doc(db, "users", user.uid));
+    if (profileSnap.exists()) {
+      displayName = profileSnap.data().name || displayName;
+    }
+  } catch {
+    // Non-fatal: member will just show UID if profile read fails
+  }
+
   await runTransaction(db, async (tx) => {
     const freshSnap = await tx.get(inviteRef);
     if (!freshSnap.exists() || freshSnap.data().status !== "pending") {
@@ -48,6 +60,8 @@ export async function acceptInvite(inviteCode: string): Promise<void> {
     tx.set(doc(db, `orgs/${inv.orgId}/members/${user.uid}`), {
       uid: user.uid,
       role: inv.role,
+      displayName,
+      email: userEmail,
       createdAt: now,
       inviteCode,
     });

@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Briefcase, Check, FileText, Mail, Pencil, Phone, Trash2, X } from "lucide-react";
+import { ArrowLeft, Briefcase, Check, FileText, Mail, Pencil, Phone, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/app/shared/ui/button";
 import { Input } from "@/app/shared/ui/input";
 import { Label } from "@/app/shared/ui/label";
@@ -112,6 +112,9 @@ export default function CandidateDetailPage() {
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+
+  // Tags
+  const [tagInput, setTagInput] = useState("");
 
   const reload = useCallback(async () => {
     if (!orgId || !candidateId) return;
@@ -229,6 +232,34 @@ export default function CandidateDetailPage() {
       toast.error("Ndryshimet nuk u ruajtën.");
     } finally {
       setSavingEdit(false);
+    }
+  }
+
+  async function handleAddTag(e: FormEvent) {
+    e.preventDefault();
+    const tag = tagInput.trim().toLowerCase();
+    if (!tag || !orgId || !candidateId || !candidate) return;
+    if ((candidate.tags ?? []).includes(tag)) { setTagInput(""); return; }
+    const tags = [...(candidate.tags ?? []), tag];
+    setCandidate((c) => c ? { ...c, tags } : c);
+    setTagInput("");
+    try {
+      await updateCandidate(orgId, candidateId, { tags });
+    } catch {
+      toast.error("Etiketa nuk u ruajt.");
+      reload();
+    }
+  }
+
+  async function handleRemoveTag(tag: string) {
+    if (!orgId || !candidateId || !candidate) return;
+    const tags = (candidate.tags ?? []).filter((t) => t !== tag);
+    setCandidate((c) => c ? { ...c, tags } : c);
+    try {
+      await updateCandidate(orgId, candidateId, { tags });
+    } catch {
+      toast.error("Etiketa nuk u fshi.");
+      reload();
     }
   }
 
@@ -386,6 +417,40 @@ export default function CandidateDetailPage() {
             )}
           </div>
           )}
+
+          {/* Tags */}
+          <div className="space-y-2">
+            {(candidate.tags ?? []).length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {(candidate.tags ?? []).map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium"
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTag(tag)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="size-2.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <form onSubmit={handleAddTag} className="flex gap-1">
+              <Input
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                placeholder="Shto etiketë..."
+                className="h-7 text-xs"
+              />
+              <Button type="submit" size="sm" variant="outline" className="h-7 w-7 p-0 shrink-0">
+                <Plus className="size-3.5" />
+              </Button>
+            </form>
+          </div>
 
           <Separator />
 

@@ -67,14 +67,15 @@ export default function PlatformDashboardPage() {
   useEffect(() => {
     if (!orgId) return;
     Promise.all([listJobs(orgId), listCandidates(orgId), listTasks(orgId)])
-      .then(([jobsData, candidatesData, tasksData]) => {
+      .then(async ([jobsData, candidatesData, tasksData]) => {
         setJobs(jobsData);
         setCandidates(candidatesData);
         setTasks(tasksData);
-        if (jobsData[0]?.id) {
-          listApplicants(orgId, jobsData[0].id).then((apps) =>
-            setAvgStageHours(calculateAverageTimeInStage(apps))
+        if (jobsData.length > 0) {
+          const allAppsArrays = await Promise.all(
+            jobsData.map((j) => listApplicants(orgId, j.id))
           );
+          setAvgStageHours(calculateAverageTimeInStage(allAppsArrays.flat()));
         }
       })
       .finally(() => setLoading(false));

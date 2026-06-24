@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "notes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "refId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "jobs",
       "queryScope": "COLLECTION",
       "fields": [

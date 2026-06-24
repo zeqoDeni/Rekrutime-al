@@ -10,7 +10,12 @@ import {
 import { db } from "../firebase";
 import { AgencyOrg, AppRole } from "../types/ats";
 
-export async function createOrganization(input: { name: string; userId: string }) {
+export async function createOrganization(input: {
+  name: string;
+  userId: string;
+  displayName?: string;
+  email?: string;
+}) {
   const orgRef = doc(collection(db, "orgs"));
   const createdAt = new Date().toISOString();
   await setDoc(orgRef, {
@@ -22,6 +27,8 @@ export async function createOrganization(input: { name: string; userId: string }
   await setDoc(doc(db, `orgs/${orgRef.id}/members/${input.userId}`), {
     uid: input.userId,
     role: "owner" satisfies AppRole,
+    displayName: input.displayName || undefined,
+    email: input.email || undefined,
     createdAt,
   });
   await setDoc(doc(db, `userOrgs/${input.userId}/memberships/${orgRef.id}`), {

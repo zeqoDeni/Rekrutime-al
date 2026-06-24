@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Check, ListTodo, Plus } from "lucide-react";
+import { Check, ListTodo, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/app/shared/ui/button";
 import { Input } from "@/app/shared/ui/input";
@@ -7,7 +7,7 @@ import { Badge } from "@/app/shared/ui/badge";
 import { Skeleton } from "@/app/shared/ui/skeleton";
 import { useOrg } from "../context/OrgContext";
 import { useAuth } from "@/app/context/AuthContext";
-import { listTasks, createTask, updateTask } from "@/lib/orgs/tasks";
+import { listTasks, createTask, updateTask, deleteTask } from "@/lib/orgs/tasks";
 import { listMembers } from "@/lib/orgs/members";
 import { TaskRecord, OrgMember } from "@/lib/types/ats";
 
@@ -94,6 +94,17 @@ export default function TasksPage() {
       await updateTask(orgId!, task.id, { status });
     } catch {
       toast.error("Statusi nuk u ndryshua.");
+      reload();
+    }
+  };
+
+  const handleDeleteTask = async (task: TaskRecord) => {
+    setTasks((prev) => prev.filter((t) => t.id !== task.id));
+    try {
+      await deleteTask(orgId!, task.id);
+      toast.success("Detyra u fshi.");
+    } catch {
+      toast.error("Detyra nuk u fshi.");
       reload();
     }
   };
@@ -189,20 +200,30 @@ export default function TasksPage() {
                             </Badge>
                           </div>
 
+                          <div className="flex gap-1">
                           <Button
                             size="sm"
                             variant="outline"
-                            className="w-full h-6 text-[10px] gap-1"
+                            className="flex-1 h-6 text-[10px] gap-1"
                             onClick={() => handleStatusChange(task, next)}
                           >
                             {next === "done" ? (
-                              <><Check className="size-3" /> Shëno si kryer</>
+                              <><Check className="size-3" /> Kryer</>
                             ) : next === "in_progress" ? (
-                              <>→ Në progres</>
+                              <>→ Progres</>
                             ) : (
                               <>↺ Rihap</>
                             )}
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive shrink-0"
+                            onClick={() => handleDeleteTask(task)}
+                          >
+                            <Trash2 className="size-3" />
+                          </Button>
+                          </div>
                         </div>
                       );
                     })

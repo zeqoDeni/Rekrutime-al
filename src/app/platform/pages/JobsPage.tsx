@@ -25,11 +25,12 @@ import {
 } from "@/app/shared/ui/alert-dialog";
 import { createJob, deleteJob, listJobs, updateJob } from "@/lib/orgs/jobs";
 import { listCandidates } from "@/lib/orgs/candidates";
+import { listClients } from "@/lib/orgs/clients";
 import { listApplicants, upsertApplicantStage } from "@/lib/orgs/applicants";
 import { useOrg } from "../context/OrgContext";
 import { useAuth } from "@/app/context/AuthContext";
 import { PipelineBoard } from "../components/PipelineBoard";
-import { Applicant, CandidateProfile, JobRequisition, JobStatus, PipelineStage } from "@/lib/types/ats";
+import { Applicant, ClientCompany, CandidateProfile, JobRequisition, JobStatus, PipelineStage } from "@/lib/types/ats";
 
 const STATUS_LABELS: Record<JobStatus, string> = {
   open: "E hapur",
@@ -51,10 +52,12 @@ export default function JobsPage() {
 
   const [jobs, setJobs] = useState<JobRequisition[]>([]);
   const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
+  const [clients, setClients] = useState<ClientCompany[]>([]);
   const [activeJobId, setActiveJobId] = useState<string>("");
   const [applicants, setApplicants] = useState<Applicant[]>([]);
 
   const [title, setTitle] = useState("");
+  const [newJobClientId, setNewJobClientId] = useState("");
   const [selectedCandidateId, setSelectedCandidateId] = useState("");
 
   const [loadingJobs, setLoadingJobs] = useState(true);
@@ -66,12 +69,14 @@ export default function JobsPage() {
     if (!orgId) return;
     setLoadingJobs(true);
     try {
-      const [jobsData, candidatesData] = await Promise.all([
+      const [jobsData, candidatesData, clientsData] = await Promise.all([
         listJobs(orgId),
         listCandidates(orgId),
+        listClients(orgId),
       ]);
       setJobs(jobsData);
       setCandidates(candidatesData);
+      setClients(clientsData);
       if (jobsData.length && !activeJobId) {
         setActiveJobId(jobsData[0].id);
       }
@@ -116,12 +121,13 @@ export default function JobsPage() {
       await createJob(orgId, {
         title: title.trim(),
         status: "open",
-        clientId: "",
+        clientId: newJobClientId,
         ownerUid: user.id,
         createdAt: new Date().toISOString(),
       });
       toast.success("Puna u krijua.");
       setTitle("");
+      setNewJobClientId("");
       reloadJobs();
     } catch {
       toast.error("Puna nuk u ruajt.");
@@ -217,7 +223,7 @@ export default function JobsPage() {
       </div>
 
       {/* Create job form */}
-      <form onSubmit={createJobSubmit} className="flex gap-2">
+      <form onSubmit={createJobSubmit} className="flex flex-wrap gap-2">
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -225,6 +231,20 @@ export default function JobsPage() {
           className="h-9 max-w-xs text-sm"
           disabled={creating}
         />
+        {clients.length > 0 && (
+          <Select value={newJobClientId} onValueChange={setNewJobClientId}>
+            <SelectTrigger className="h-9 w-44 text-sm">
+              <SelectValue placeholder="Klienti (opsional)" />
+            </SelectTrigger>
+            <SelectContent>
+              {clients.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Button type="submit" size="sm" disabled={!title.trim() || creating}>
           {creating ? "Duke krijuar..." : "+ Krijo punë"}
         </Button>

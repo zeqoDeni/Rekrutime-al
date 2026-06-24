@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Loader2, Lock, Mail } from 'lucide-react';
 import { Button } from '@/app/shared/ui/button';
 import { Input } from '@/app/shared/ui/input';
@@ -24,6 +24,7 @@ export default function Login() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const { login, loginWithGoogle, isLoading, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Navigate after redirect-based Google sign-in resolves
   useEffect(() => {
@@ -35,7 +36,10 @@ export default function Login() {
     setError('');
     const success = await login(email, password);
     if (success) {
-      window.location.replace('/app/select-org');
+      const from = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
+      window.location.replace(
+        from?.pathname ? from.pathname + (from.search ?? '') : '/app/select-org'
+      );
     } else {
       setError('Email ose fjalëkalim i gabuar.');
     }
